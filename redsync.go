@@ -15,6 +15,18 @@ const (
 // Redsync provides a simple method for creating distributed mutexes using multiple Redis connection pools.
 type Redsync struct {
 	pools []redis.Pool
+	// 这个池其实是多个redis client的节点的管理器，并不是redis连接池。
+	
+	// go-redis本身连接池如下，连接池的设计是为了复用连接和管理并发请求
+	//client := redis.NewClient(&redis.Options{
+   		// Addr: "localhost:6379",
+    		//PoolSize: 10,           // 连接池大小
+    		//MinIdleConns: 5,       // 最小空闲连接数
+    		//MaxConnAge: time.Hour,  // 连接最大存活时间
+		//})
+	//简单来说就是单个client，内部有connPool，connPool内部有[]conns，每个请求获取连接的时候，先从client找connPool,然后找conns
+	
+	
 }
 
 // New creates and returns a new Redsync instance from given Redis connection pools.
@@ -25,6 +37,7 @@ func New(pools ...redis.Pool) *Redsync {
 }
 
 // NewMutex returns a new distributed mutex with given name.
+// 只用一个参数name 再加一个参数options，这样外部调用的时候可以直接传一个name不感知option或者一个name加上指定的若干options
 func (r *Redsync) NewMutex(name string, options ...Option) *Mutex {
 	m := &Mutex{
 		name:   name,
@@ -64,6 +77,8 @@ func (f OptionFunc) Apply(mutex *Mutex) {
 // WithExpiry can be used to set the expiry of a mutex to the given value.
 // The default is 8s.
 func WithExpiry(expiry time.Duration) Option {
+	// OptionFunc显式类型转换，避免类型推断歧义，增加代码可读性。
+	// 给mutex上属性，所以必须是指针类型
 	return OptionFunc(func(m *Mutex) {
 		m.expiry = expiry
 	})
